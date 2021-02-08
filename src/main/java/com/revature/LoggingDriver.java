@@ -13,11 +13,12 @@ public class LoggingDriver {
             logger.error("Didn't do it");
         }
         logger.trace("Exiting application");
+        
     }
 
     private static boolean doIt() {
-        logger.entry();
+        logger.traceEntry();
         logger.error("Did it again!");
-        return logger.exit(false);
+        return logger.traceExit(false);
     }
 }
