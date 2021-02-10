@@ -4,6 +4,9 @@ package com.revature;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
+
+
+
 public class LoggingDriver {
     private static final Logger logger = LogManager.getLogger(LoggingDriver.class);
 
@@ -13,7 +16,6 @@ public class LoggingDriver {
             logger.error("Didn't do it");
         }
         logger.trace("Exiting application");
-        
     }
 
     private static boolean doIt() {

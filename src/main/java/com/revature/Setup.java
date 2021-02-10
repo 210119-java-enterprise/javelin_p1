@@ -13,7 +13,7 @@ import org.apache.logging.log4j.LogManager;
  */
 public class Setup {
 
-    private Connection conn = null;
+    private static Connection conn = null;
     private static final Logger logger = LogManager.getLogger(Setup.class);
 
     private Setup() {
@@ -41,7 +41,7 @@ public class Setup {
      * @param password the user's password
      * @throws SQLException - if a database access error occurs or the url is {@code null}
      */
-    public void open(String url, String user, String password) throws SQLException {
+    public static void open(String url, String user, String password) throws SQLException {
         if (conn != null) {
             logger.info("Closing open connection" + conn.toString());
             close();
@@ -64,7 +64,7 @@ public class Setup {
      * @param schema the name of the schema in which to work
      * @throws SQLException - if a database access error occurs or the url is {@code null}
      */
-    public void open(String url, String user, String password, String schema) throws SQLException {
+    public static void open(String url, String user, String password, String schema) throws SQLException {
         try {
             open(url, user, password);
             conn.setSchema(schema);
@@ -76,9 +76,9 @@ public class Setup {
     }
 
     /**
-     * Closes the connection to database.
+     * Closes the connection to the PostgreSQL database.
      */
-    public void close() {
+    public static void close() {
         // Can't use try-with-resources
         try {
             conn.close();
@@ -93,7 +93,11 @@ public class Setup {
         }
     }
 
-    protected Connection getConnection() {
+    /**
+     * Returns the instace of {@code Connection}
+     * @return the connection to the PostgreSQL database
+     */
+    protected static Connection getConnection() {
         return conn;
     }
     
