@@ -3,6 +3,7 @@ package com.revature;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 
 import com.revature.annotations.Table;
@@ -19,6 +20,11 @@ public abstract class Model {
      * Holds all the fields and values of the table
      */
     private HashMap<String, Object> fieldsAndValues;
+
+    /**
+     * Stores the sql statement that will be run by the {@code execute()} method
+     */
+    private PreparedStatement pstmt;
 
     /**
      * Stores the sql query that will be run by the {@code execute()} method
@@ -88,7 +94,7 @@ public abstract class Model {
             for (int i = 0; i < keySet.length; i++) {
                 pstmt.setObject(i + 1, fieldsAndValues.get(keySet[i]));
             }
-            pstmt.executeUpdate();
+            execute(pstmt);
         } catch (SQLException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -105,10 +111,17 @@ public abstract class Model {
      * @return a {@code Set} of all objects in the
      *      table associated with this class
      */
-    public <T extends Model> Set<T> findAll() {
+    public <T extends Model> List<T> findAll() {
         sqlString = "SELECT * FROM " + tableName;
-        
-        return execute();
+        try {
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sqlString);
+            pstmt.
+            return execute(pstmt);
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return null;
     }
     
     /**
@@ -123,7 +136,7 @@ public abstract class Model {
      */
     public <T extends Model> T findById(int id) {
         sqlString = "SELECT * FROM " + tableName + " WHERE";
-        return (T) execute().toArray()[0];
+        return (T) execute().get(0);
     }
 
     public <T extends Model> T findByColumn(String columnName, Object value) {
@@ -142,7 +155,7 @@ public abstract class Model {
         return (T) this;
     }
 
-    public <T extends Model> Set<T> execute() {
+    public <T extends Model> List<T> execute(PreparedStatement pstmt) {
         return null;
     }
     
