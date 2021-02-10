@@ -11,7 +11,7 @@ import org.apache.logging.log4j.LogManager;
  * This class provides a simple interface to
  * initialize a {@code Connection} to a database.
  */
-public class Setup {
+public final class Setup {
 
     private static Connection conn = null;
     private static final Logger logger = LogManager.getLogger(Setup.class);
