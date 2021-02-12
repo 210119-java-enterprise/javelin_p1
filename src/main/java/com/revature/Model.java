@@ -14,7 +14,9 @@ import com.revature.annotations.Table;
 import com.revature.exceptions.InvalidColumnsException;
 import com.revature.exceptions.InvalidQueryException;
 import com.revature.exceptions.ResourcePersistenceException;
+import com.revature.exceptions.TypeMismatchException;
 
+// TODO: add logging
 public abstract class Model {
 
     /**
@@ -49,27 +51,90 @@ public abstract class Model {
                 && this.getClass().getAnnotation(Table.class).value() != "") {
             tableName = this.getClass().getAnnotation(Table.class).value();
         } else {
-            tableName = this.getClass().getName();
+            tableName = this.getClass().getSimpleName();
         }
     }
 
-    private Model(HashMap<String, Object> fieldsAndValues) {
+    /**
+     * Creates a {@code Model} object with specified {@code fieldsAndValues}.
+     * Sets the name of the table to the name of the class or the value given
+     * in the {@code @Table} annotation if present.
+     * @param fieldsAndValues
+     *      column names and values
+     */
+    protected Model(HashMap<String, Object> fieldsAndValues) {
         this();
         this.fieldsAndValues = fieldsAndValues;
     }
 
-    public Object get(String field) {
-        return fieldsAndValues.get(field);
+    /**
+     * Retrieves the value for the given {@code columnName}
+     * for the object currently stored. Does not retrieve
+     * any values from database.
+     * @param columnName
+     * @return value of {@code columnName} in {@code this}
+     *      or {@code null} if the {@code columnName} does not exist
+     */
+    public Object get(String columnName) {
+        return fieldsAndValues.get(columnName);
     }
 
-    public <T extends Model> T setField(String field, Object value) {
-        fieldsAndValues.put(field, value);
+    /**
+     * Adds given {@code column} and {@code value} to {@code this}.
+     * Will override previous value if {@code column} already
+     * exists. Does not interact with database.
+     * @param <T>
+     * @param column
+     *      name of column to add or modify
+     * @param value
+     *      value attributed to column
+     * @return
+     *      {@code this} to encourage method chaining
+     */
+    @SuppressWarnings("unchecked") 
+    public <T extends Model> T setColumn(String column, Object value) {
+        if (!fieldsAndValues.containsKey(column)) {
+            fieldsAndValues.put(column, value);
+            return (T) this;
+        }
+        if (fieldsAndValues.get(column).getClass().getName().equals(value.getClass().getName())) {
+            fieldsAndValues.put(column, value);
+        } else {
+            throw new TypeMismatchException("Types " + 
+                fieldsAndValues.get(column).getClass().getName() +
+                " and " + 
+                value.getClass().getName() +
+                " are not compatible. If this was intentional, use changeColumn()");
+        }
         return (T) this;
     }
 
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
+    /**
+     * Adds given {@code column} and {@code value} to {@code this}.
+     * Will override previous value if {@code column} already
+     * exists. Does not interact with database.
+     * @param <T>
+     * @param column
+     *      name of column to add or modify
+     * @param value
+     *      value attributed to column
+     * @return
+     *      {@code this} to encourage method chaining
+     */
+    @SuppressWarnings("unchecked") 
+    public <T extends Model> T changeColumn(String column, Object value) {
+        fieldsAndValues.put(column, value);
+        return (T) this;
     }
+
+    // -------------------------------------------
+    // Getters and Setters
+
+    public String getTableName() { return tableName; }
+
+    public void setTableName(String tableName) { this.tableName = tableName; }
+    
+    protected HashMap<String, Object> getFieldsAndValues() { return fieldsAndValues; }
 
     // -------------------------------------------
     // CRUD methods
@@ -80,6 +145,8 @@ public abstract class Model {
      * this class with the already given values. Will {@code throw} an
      * {@code InvalidColumnsException} if no fields are set. This is a starting and
      * terminal operation.
+     * @param <T> object inheriting from {@code Model}
+     * @param clazz the {@code Class} of this object
      */
     public <T extends Model> void create(Class<T> clazz) {
         if (fieldsAndValues.isEmpty()) {
@@ -113,9 +180,10 @@ public abstract class Model {
      * is an starting operation, use {@code execute()} to finish the query and get
      * desired results or chain intermediary operations onto this.
      * 
-     * @param <T>
+     * @param <T> object inheriting from {@code Model}
      * @return {@code this} to allow for method chaining
      */
+    @SuppressWarnings("unchecked") 
     public <T extends Model> T findAll() {
         sqlString = "SELECT * FROM " + tableName;
         return (T) this;
@@ -127,10 +195,11 @@ public abstract class Model {
      * {@code execute()} to finish the query and get desired results or chain
      * intermediary operations onto this.
      * 
-     * @param <T>
+     * @param <T> object inheriting from {@code Model}
      * @param id  the id of the object to search for
      * @return {@code this} to allow for method chaining
      */
+    @SuppressWarnings("unchecked") 
     public <T extends Model> T findAllById(int id) {
         String idKey = "";
         for (String key : fieldsAndValues.keySet()) {
@@ -155,11 +224,12 @@ public abstract class Model {
      * finish the query and get desired results or chain intermediary operations
      * onto this.
      * 
-     * @param <T>
+     * @param <T> object inheriting from {@code Model}
      * @param columnName the name of the column to be searched
      * @param value      the value to be searched for within {@code columnName}
      * @return {@code this} to allow for method chaining
      */
+    @SuppressWarnings("unchecked") 
     public <T extends Model> T findAllByColumn(String columnName, Object value) {
         sqlString = "SELECT * FROM " + tableName + " WHERE ? = ? ";
         userSqlList.add(columnName);
@@ -172,10 +242,11 @@ public abstract class Model {
      * with class. This is a starting operation, use {@code execute()} to finish the
      * query and get desired results or chain intermediary operations onto this.
      * 
-     * @param <T>
+     * @param <T> object inheriting from {@code Model}
      * @param columnList the name of columns for desired values
      * @return {@code this} to allow for method chaining
      */
+    @SuppressWarnings("unchecked") 
     public <T extends Model> T findColumns(String... columnList) {
         sqlString = "SELECT ";
         for (int i = 0; i < columnList.length; i++) {
@@ -196,10 +267,11 @@ public abstract class Model {
      * {@code findAll()}. This is an intermediary operation. Use after a starting
      * operation and before a terminal operation.
      * 
-     * @param <T>
+     * @param <T> object inheriting from {@code Model}
      * @param query
      * @return {@code this} to allow for method chaining
      */
+    @SuppressWarnings("unchecked") 
     public <T extends Model> T where(String query) {
         sqlString += "WHERE ? ";
         userSqlList.add(query);
@@ -212,10 +284,11 @@ public abstract class Model {
      * {@code where()}. This is an intermediary operation. Use after a starting
      * operation and before a terminal operation.
      * 
-     * @param <T>
+     * @param <T> object inheriting from {@code Model}
      * @param query SQL query to add to a {@code where} clause
      * @return {@code this} to allow for method chaining
      */
+    @SuppressWarnings("unchecked") 
     public <T extends Model> T whereAnd(String query) {
         sqlString += "AND ? ";
         userSqlList.add(query);
@@ -227,6 +300,8 @@ public abstract class Model {
      * update a record with the same {@code id} value in the database corresponding
      * to this class. Will {@code throw InvalidColumnsException} if no fields are
      * set. This is a starting and terminal operation.
+     * @param <T> object inheriting from {@code Model}
+     * @param clazz the {@code Class} of this object
      */
     public <T extends Model> void update(Class<T> clazz) {
         sqlString = "UPDATE " + tableName + " SET ";
@@ -263,18 +338,30 @@ public abstract class Model {
      * starting operation, use {@code execute()} to finish the query and get desired
      * results or chain intermediary operations onto this.
      * 
+     * @param <T> object inheriting from {@code Model}
      * @return {@code this} to allow for method chaining
      */
+    @SuppressWarnings("unchecked") 
     public <T extends Model> T delete() {
         sqlString = "DELETE FROM " + tableName + " ";
         return (T) this;
     }
 
     /**
-     * 
-     * @param <T>
-     * @param clazz
-     * @return
+     * TODO: add documentation
+     * Executes the SQL command stored in {@code sqlString}.
+     * Checks if SQL command is a {@code SELECT} statements
+     * or other valid command. Will add all previously given
+     * user input, column names and values into a {@code PreparedStatement}
+     * and execute it. Will return an empty list if the
+     * command is not a {@code SELECT} statement, otherwise
+     * returns a list of <T> objects given by the {@code SELECT}
+     * statement. If the {@code SELECT} query returns only 1 item,
+     * sets {@code this} to the returned item.
+     * @param <T> object inheriting from {@code Model}
+     * @param clazz the {@code Class} of this object
+     * @return a list of objects returned by query,
+     *      or empty list.
      */
     public <T extends Model> List<T> execute(Class<T> clazz) {
         ResultSet rs = null;
@@ -289,6 +376,7 @@ public abstract class Model {
                     "A starting operation was not used. Start a query by using methods like delete() or find().");
         }
 
+        // Execute sqlString on the database
         try {
             PreparedStatement pstmt = Setup.getConnection().prepareStatement(sqlString);
             for (int i = 0; i < userSqlList.size(); i++) {
@@ -311,28 +399,34 @@ public abstract class Model {
 
         List<T> newModelList = new ArrayList<>();
 
-        try {
-            // Need to get all objects from resultSet
-            while (rs.next()) {
-                ResultSetMetaData rsmd = rs.getMetaData();
-                // Put them into HashMap<String,Object> and create Model object
-                HashMap<String, Object> fieldMap = new HashMap<>();
-                for (int i = 0; i < rsmd.getColumnCount(); i++) {
-                    String columnName = rsmd.getColumnName(i+1);
-                    Object value = rs.getObject(columnName);
-                    fieldMap.put(columnName, value);
+        // Get all objects from resultSet if a SELECT statement was used
+        if (isQuery) {
+            try {
+                while (rs.next()) {
+                    ResultSetMetaData rsmd = rs.getMetaData();
+                    // Put all columns into HashMap<String,Object>
+                    HashMap<String, Object> fieldMap = new HashMap<>();
+                    for (int i = 0; i < rsmd.getColumnCount(); i++) {
+                        String columnName = rsmd.getColumnName(i+1);
+                        Object value = rs.getObject(columnName);
+                        fieldMap.put(columnName, value);
+                    }
+
+                    // Get constructor for T and create a new object of that class
+                    Constructor<T> ctor = clazz.getConstructor(HashMap.class);
+
+                    // Add it to the list
+                    newModelList.add(ctor.newInstance(fieldMap));
                 }
-
-                // Get constructor for T and create a new object of that class
-                Constructor<T> ctor = clazz.getConstructor(HashMap.class);
-
-                // Add it to the list
-                newModelList.add(ctor.newInstance(fieldMap));
+            } catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+                    | InvocationTargetException | SQLException | NoSuchMethodException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
             }
-        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException
-                | InvocationTargetException | SQLException | NoSuchMethodException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            if (newModelList.size() == 1) {
+                fieldsAndValues = newModelList.get(0).getFieldsAndValues();
+                tableName = newModelList.get(0).getTableName();
+            }
         }
 
         sqlString = "";

@@ -1,8 +1,11 @@
 package com.revature;
 
+import java.io.FileReader;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -49,7 +52,8 @@ public final class Setup {
         try {
             conn = DriverManager.getConnection(url, user, password);
         } catch (SQLException e) {
-            logger.fatal(e.getMessage());
+            logger.error(e.getMessage());
+            conn = null;
             throw new SQLException(e);
         }
         
@@ -69,16 +73,39 @@ public final class Setup {
             open(url, user, password);
             conn.setSchema(schema);
         } catch (SQLException e) {
-            logger.fatal(e.getMessage());
+            conn = null;
+            logger.error(e.getMessage());
             throw new SQLException(e);
         }
-        
+    }
+
+    /**
+     * Opens a connection to database with details found
+     * in the .properties file given. Will try to retrieve
+     * "url", "username" and "password".
+     * Uses default schema of Public
+     * @param location
+     *      the location of .properties file holding database information.
+     * @throws SQLException - if a database access error occurs or the url is {@code null}
+     */
+    public static void open(String location) throws SQLException {
+        Properties props = new Properties();
+        try {
+            props.load(new FileReader(location));
+            open(props.getProperty("url"), props.getProperty("username"), props.getProperty("password"));
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     /**
      * Closes the connection to the PostgreSQL database.
      */
     public static void close() {
+        if (conn == null) {
+            return;
+        }
         // Can't use try-with-resources
         try {
             conn.close();
