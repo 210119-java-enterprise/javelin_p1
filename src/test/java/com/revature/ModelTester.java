@@ -337,7 +337,7 @@ public class ModelTester {
     }
 
     @Test
-    public void testFindById_withExecute_andOneObjectInTable_andFindingValidId() {
+    public void testFindById_withExecute_andOneObjectInTable_andValidIdColumn() {
         String column0 = "user_id";
         String column1 = "age";
         int idValue = 0;
@@ -371,11 +371,52 @@ public class ModelTester {
     }
 
     @Test
-    public void testFindById_withExecute_andOneObjectInTable_andFindingInvalidId() {
+    public void testFindById_withExecute_andInvalidIdColumn() {
+        String invalidColumnName = ";DROP ALL";
+
+        try {
+            List<ModelExtension> models = child.findAllById(invalidColumnName, 0).execute(ModelExtension.class);
+            assertTrue(false);
+        } catch (InvalidColumnsException e) {
+            // Yay
+        }
+
     }
 
     @Test
     public void testFindById_withExecute_andTwoObjectsInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 22;
+        int idValue1 = 1;
+        int ageValue1 = 24;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAllById(column0, 1).execute(ModelExtension.class);
+        
+        assertEquals(1, models.size());
+        assertEquals(idValue1, models.get(0).get(column0));
+        assertEquals(ageValue1, models.get(0).get(column1));
         
     }
 }

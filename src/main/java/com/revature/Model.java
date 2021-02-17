@@ -214,11 +214,18 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T findAllById(String idColumnName, int id) {
-        sqlString = "SELECT * FROM " + tableName + " WHERE " + "? = ?";
-        userSqlList.add(idColumnName);
+        sanitizeColumn(idColumnName);
+        sqlString = "SELECT * FROM " + tableName + " WHERE " + idColumnName + "=?";
         userSqlList.add(id);
 
         return (T) this;
+    }
+
+    private void sanitizeColumn(String columnName) throws InvalidColumnsException {
+        if (!columnName.matches("[A-Za-z_]+")) {
+            throw new InvalidColumnsException("Invalid name for a column, " +
+                "please ensure that your column only contains alphabetic characters and underscores");
+        }
     }
 
     /**
@@ -227,7 +234,7 @@ public abstract class Model {
      * finish the query and get desired results or chain intermediary operations
      * onto this.
      * 
-     * @param <T> object inheriting from {@code Model}
+     * @param <T>        object inheriting from {@code Model}
      * @param columnName the name of the column to be searched
      * @param value      the value to be searched for within {@code columnName}
      * @return {@code this} to allow for method chaining
@@ -402,13 +409,19 @@ public abstract class Model {
                         " could not be found, please create table and try again.");
                 }
             }
+            // sqlString = "SELECT * FROM ModelExtension WHERE ?=?";
             PreparedStatement pstmt = Setup.getConnection().prepareStatement(sqlString);
+            // pstmt.setString(1, "user_id");
+            // pstmt.setObject(2, 0);
             for (int i = 0; i < userSqlList.size(); i++) {
                 pstmt.setObject(i + 1, userSqlList.get(i));
             }
             // If the sqlString is a SELECT query, get result in resultSet
             if (isQuery) {
-                rs = pstmt.executeQuery();
+                // System.out.println(pstmt.toString());
+                // System.out.println(pstmt.sql);
+                pstmt.execute();
+                rs = pstmt.getResultSet();
             } else {
                 if (pstmt.executeUpdate() > 0) {
                     rs = pstmt.getGeneratedKeys();
