@@ -2,6 +2,7 @@ package com.revature;
 
 import static org.junit.Assert.*;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -89,6 +90,27 @@ public class SetupTester {
             assertTrue(false);
         }
         assertNotNull(Setup.getConnection());
+    }
+
+    @Test
+    public void testOpen_withValidFileLocation() {
+        try {
+            Setup.open("src/main/resources/application.properties");
+            assertNotNull(Setup.getConnection());
+        } catch (Exception e) {
+            assertTrue(false);
+        }
+        
+    }
+
+    @Test
+    public void testOpen_withInvalidFileLocation() {
+        try {
+            Setup.open("sro/main/resources/application.properties");
+        } catch (SQLException e) {
+        }
+        assertNull(Setup.getConnection());
+
     }
 
     @Test

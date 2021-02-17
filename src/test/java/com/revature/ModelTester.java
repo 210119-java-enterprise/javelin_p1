@@ -4,10 +4,15 @@ import static org.junit.Assert.*;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 
 import com.revature.exceptions.InvalidColumnsException;
+import com.revature.exceptions.ResourcePersistenceException;
 import com.revature.exceptions.TypeMismatchException;
 
 import org.junit.*;
@@ -22,6 +27,10 @@ public class ModelTester {
         try {
             props.load(new FileReader("src/main/resources/application.properties"));
             Setup.open(props.getProperty("url"), props.getProperty("username"), props.getProperty("password"));
+            
+            String sql = "DROP TABLE IF EXISTS ModelExtension";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
         } catch (IOException | SQLException e) {
             e.printStackTrace();
         }
@@ -145,22 +154,228 @@ public class ModelTester {
     public void testCreate_withEmptyModel() {
         try {
             // Should throw an InvalidColumnsException
-            child.create(child.getClass());
+            child.create(ModelExtension.class);
             assertTrue(false);
         } catch (InvalidColumnsException e) {
             // Yay!
         }
     }
 
-    // TODO:
     @Test
-    public void testCreate_withColumnsInModel() {
+    public void testCreate_withColumnsInModel_andPreExistingTable() {
         String column0 = "string_column";
         String column1 = "int_column";
         String value0 = "Hello there.";
         int value1 = 0;
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " varchar(25), " +
+            column1 + " int);commit";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
         child.setColumn(column0, value0)
                 .setColumn(column1, value1);
-        child.create(child.getClass());
+        child.create(ModelExtension.class);
+
+        try {
+            String sql = "SELECT * FROM ModelExtension";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery();
+            rs.next();
+            assertEquals(value0, rs.getString(column0));
+            assertEquals(value1, rs.getInt(column1));
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testCreate_withColumnsInModel_andNoExistingTable() {
+        String column0 = "string_column";
+        String column1 = "int_column";
+        String value0 = "Hello there.";
+        int value1 = 0;
+
+        try {
+            child.setColumn(column0, value0)
+                    .setColumn(column1, value1);
+            child.create(ModelExtension.class);
+            assertTrue(false);
+        } catch (ResourcePersistenceException e) {
+            
+        }
+    }
+
+    @Test
+    public void testCreate_withNoColumnsInModel() {
+        try {
+            child.create(ModelExtension.class);
+            assertTrue(false);
+        } catch (InvalidColumnsException e) {
+
+        }
+    }
+
+    @Test
+    public void testFindAll_withExecute_andNoObjectsInTable() {
+        String column0 = "string_column";
+        String column1 = "int_column";
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " varchar(25), " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAll().execute(ModelExtension.class);
+
+        assertEquals(0, models.size());
+    }
+
+    @Test
+    public void testFindAll_withExecute_andOneObjectInTable() {
+        String column0 = "string_column";
+        String column1 = "int_column";
+        String stringValue = "Hello there.";
+        int intValue = 0;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " varchar(25), " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            stringValue + "', " +
+            intValue + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAll().execute(ModelExtension.class);
+
+        assertEquals(1, models.size());
+        assertEquals(stringValue, models.get(0).get(column0));
+        assertEquals(intValue, models.get(0).get(column1));
+        assertEquals(stringValue, child.get(column0));
+        assertEquals(intValue, child.get(column1));
+    }
+
+    @Test
+    public void testFindAll_withExecute_andTwoObjectsInTable() {
+        String column0 = "string_column";
+        String column1 = "int_column";
+        String stringValue0 = "Hello there.";
+        String stringValue1 = "General Kenobi!";
+        int intValue0 = 0;
+        int intValue1 = 100;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " varchar(25), " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            stringValue0 + "', " +
+            intValue0 + "), ('" +
+            stringValue1 + "', " +
+            intValue1 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        
+        List<ModelExtension> models = child.findAll().execute(ModelExtension.class);
+
+        assertEquals(2, models.size());
+        assertEquals(stringValue0, models.get(0).get(column0));
+        assertEquals(intValue0, models.get(0).get(column1));
+        assertEquals(stringValue1, models.get(1).get(column0));
+        assertEquals(intValue1, models.get(1).get(column1));
+        assertEquals(new HashMap<String, Object>(), child.getFieldsAndValues());
+        
+    }
+
+    @Test
+    public void testFindById_withExecute_andNoObjectsInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAllById(column0, 0).execute(ModelExtension.class);
+        assertEquals(0, models.size());
+    }
+
+    @Test
+    public void testFindById_withExecute_andOneObjectInTable_andFindingValidId() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            idValue + "', " +
+            ageValue + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAllById(column0, 0).execute(ModelExtension.class);
+        
+        assertEquals(1, models.size());
+        assertEquals(idValue, models.get(0).get(column0));
+        assertEquals(ageValue, models.get(0).get(column1));
+        assertEquals(idValue, child.get(column0));
+        assertEquals(ageValue, child.get(column1));
+    }
+
+    @Test
+    public void testFindById_withExecute_andOneObjectInTable_andFindingInvalidId() {
+    }
+
+    @Test
+    public void testFindById_withExecute_andTwoObjectsInTable() {
+        
     }
 }

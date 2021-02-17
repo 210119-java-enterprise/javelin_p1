@@ -41,6 +41,14 @@ public abstract class Model {
     private String sqlString = "";
 
     /**
+     * Stores whether the database has been checked to see if
+     * the table exists or not. If this value has been changed
+     * to true, the table will either already exist or will
+     * be created when this value is changed.
+     */
+    private boolean tableChecked = false;
+
+    /**
      * Creates a {@code Model} object. Sets the name of table to the name of the
      * class or the value given in {@code @Table} annotation if present.
      */
@@ -62,7 +70,7 @@ public abstract class Model {
      * @param fieldsAndValues
      *      column names and values
      */
-    protected Model(HashMap<String, Object> fieldsAndValues) {
+    public Model(HashMap<String, Object> fieldsAndValues) {
         this();
         this.fieldsAndValues = fieldsAndValues;
     }
@@ -76,7 +84,7 @@ public abstract class Model {
      *      or {@code null} if the {@code columnName} does not exist
      */
     public Object get(String columnName) {
-        return fieldsAndValues.get(columnName);
+        return fieldsAndValues.get(columnName.toUpperCase());
     }
 
     /**
@@ -93,6 +101,7 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T setColumn(String column, Object value) {
+        column = column.toUpperCase();
         if (!fieldsAndValues.containsKey(column)) {
             fieldsAndValues.put(column, value);
             return (T) this;
@@ -123,7 +132,7 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T changeColumn(String column, Object value) {
-        fieldsAndValues.put(column, value);
+        fieldsAndValues.put(column.toUpperCase(), value);
         return (T) this;
     }
 
@@ -135,6 +144,8 @@ public abstract class Model {
     public void setTableName(String tableName) { this.tableName = tableName; }
     
     protected HashMap<String, Object> getFieldsAndValues() { return fieldsAndValues; }
+
+    protected void setFieldsAndValues(HashMap<String, Object> fieldsAndValues) { this.fieldsAndValues = fieldsAndValues; }
 
     // -------------------------------------------
     // CRUD methods
@@ -153,7 +164,8 @@ public abstract class Model {
             throw new InvalidColumnsException("No columns are set");
         }
         sqlString = "INSERT INTO " + tableName + " (";
-        String[] keySet = (String[]) fieldsAndValues.keySet().toArray();
+        
+        String[] keySet = (String[]) fieldsAndValues.keySet().toArray(new String[0]);
         for (int i = 0; i < keySet.length; i++) {
             sqlString += keySet[i];
             if (i != keySet.length - 1) {
@@ -196,23 +208,14 @@ public abstract class Model {
      * intermediary operations onto this.
      * 
      * @param <T> object inheriting from {@code Model}
+     * @param idColumnName the name of the column with the id value
      * @param id  the id of the object to search for
      * @return {@code this} to allow for method chaining
      */
     @SuppressWarnings("unchecked") 
-    public <T extends Model> T findAllById(int id) {
-        String idKey = "";
-        for (String key : fieldsAndValues.keySet()) {
-            if (key.contains("id") || key.contains("ID") || key.contains("Id")) {
-                idKey = key;
-                break;
-            }
-        }
-        if (idKey.equals("")) {
-            throw new InvalidColumnsException(
-                    "Could not find an appropriate id key! Make sure to set your primary key and that it contains \"id\" in it");
-        }
-        sqlString = "SELECT * FROM " + tableName + " WHERE " + idKey + " = ?";
+    public <T extends Model> T findAllById(String idColumnName, int id) {
+        sqlString = "SELECT * FROM " + tableName + " WHERE " + "? = ?";
+        userSqlList.add(idColumnName);
         userSqlList.add(id);
 
         return (T) this;
@@ -231,8 +234,8 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T findAllByColumn(String columnName, Object value) {
-        sqlString = "SELECT * FROM " + tableName + " WHERE ? = ? ";
-        userSqlList.add(columnName);
+        sqlString = "SELECT * FROM " + tableName + " WHERE '?' = ? ";
+        userSqlList.add(columnName.toUpperCase());
         userSqlList.add(value);
         return (T) this;
     }
@@ -348,10 +351,11 @@ public abstract class Model {
     }
 
     /**
-     * TODO: add documentation
      * Executes the SQL command stored in {@code sqlString}.
      * Checks if SQL command is a {@code SELECT} statements
-     * or other valid command. Will add all previously given
+     * or other valid command. Checks if table already exists
+     * in the database and throws a {@code ResourcePersistenceException}
+     * if it does not. Will add all previously given
      * user input, column names and values into a {@code PreparedStatement}
      * and execute it. Will return an empty list if the
      * command is not a {@code SELECT} statement, otherwise
@@ -369,15 +373,35 @@ public abstract class Model {
         // Make sure a starting operation was used
         if (sqlString.startsWith("SELECT")) {
             isQuery = true;
-        } else if (sqlString.startsWith("CREATE") || sqlString.startsWith("UPDATE") || sqlString.startsWith("DELETE")) {
+        } else if (sqlString.startsWith("INSERT") || sqlString.startsWith("UPDATE") || sqlString.startsWith("DELETE")) {
             isQuery = false;
         } else {
             throw new InvalidQueryException(
-                    "A starting operation was not used. Start a query by using methods like delete() or find().");
+                    "A starting operation was not used. Start a query by using methods like delete() or find()." +
+                    " Your query was: `" + sqlString + "`");
         }
 
         // Execute sqlString on the database
         try {
+            if (!tableChecked) {
+                // Check if table already exists in database
+                boolean tableExists = false;
+                ResultSet tables = Setup.getConnection().getMetaData().getTables(null, null, "%", null);
+                while (tables.next()) {
+                    // System.out.println(tables.getString(3));
+                    if (tables.getString(3).equalsIgnoreCase(tableName)) {
+                        tableExists = true;
+                        break;
+                    }
+                }
+                // Table does not exist in database, throw exception
+                // TODO create table or add a create table method
+                if (!tableExists) {
+                    throw new ResourcePersistenceException("Table " +
+                        tableName +
+                        " could not be found, please create table and try again.");
+                }
+            }
             PreparedStatement pstmt = Setup.getConnection().prepareStatement(sqlString);
             for (int i = 0; i < userSqlList.size(); i++) {
                 pstmt.setObject(i + 1, userSqlList.get(i));
@@ -413,10 +437,13 @@ public abstract class Model {
                     }
 
                     // Get constructor for T and create a new object of that class
-                    Constructor<T> ctor = clazz.getConstructor(HashMap.class);
+                    Constructor<T> ctor = clazz.getConstructor();
+
 
                     // Add it to the list
-                    newModelList.add(ctor.newInstance(fieldMap));
+                    T temp = ctor.newInstance();
+                    temp.setFieldsAndValues(fieldMap);
+                    newModelList.add(temp);
                 }
             } catch (InstantiationException | IllegalAccessException | IllegalArgumentException
                     | InvocationTargetException | SQLException | NoSuchMethodException e) {

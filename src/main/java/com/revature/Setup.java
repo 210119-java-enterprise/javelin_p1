@@ -1,5 +1,6 @@
 package com.revature;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Connection;
@@ -94,8 +95,8 @@ public final class Setup {
             props.load(new FileReader(location));
             open(props.getProperty("url"), props.getProperty("username"), props.getProperty("password"));
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.error(e.getStackTrace());
+            logger.error("File not found at path specified: " + location);
         }
     }
 
