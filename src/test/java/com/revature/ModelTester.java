@@ -375,7 +375,7 @@ public class ModelTester {
         String invalidColumnName = ";DROP ALL";
 
         try {
-            List<ModelExtension> models = child.findAllById(invalidColumnName, 0).execute(ModelExtension.class);
+            child.findAllById(invalidColumnName, 0).execute(ModelExtension.class);
             assertTrue(false);
         } catch (InvalidColumnsException e) {
             // Yay
@@ -417,6 +417,384 @@ public class ModelTester {
         assertEquals(1, models.size());
         assertEquals(idValue1, models.get(0).get(column0));
         assertEquals(ageValue1, models.get(0).get(column1));
+        assertEquals(idValue1, child.get(column0));
+        assertEquals(ageValue1, child.get(column1));
         
+    }
+
+    @Test
+    public void testFindByColumn_withExecute_andNoObjectsInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAllByColumn(column1, 22).execute(ModelExtension.class);
+
+        assertEquals(0, models.size());
+    }
+
+    @Test
+    public void testFindByColumn_withExecute_andOneObjectInTable_andValidIdColumn() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            idValue + "', " +
+            ageValue + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAllById(column1, 22).execute(ModelExtension.class);
+        
+        assertEquals(1, models.size());
+        assertEquals(idValue, models.get(0).get(column0));
+        assertEquals(ageValue, models.get(0).get(column1));
+        assertEquals(idValue, child.get(column0));
+        assertEquals(ageValue, child.get(column1));
+    }
+
+    @Test
+    public void testFindByColumn_withExecute_andInvalidIdColumn() {
+        String invalidColumnName = ";DROP ALL";
+
+        try {
+            child.findAllById(invalidColumnName, 0).execute(ModelExtension.class);
+            assertTrue(false);
+        } catch (InvalidColumnsException e) {
+            // Yay
+        }
+
+    }
+
+    @Test
+    public void testFindByColumn_withExecute_andTwoObjectsInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 22;
+        int idValue1 = 1;
+        int ageValue1 = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAllByColumn(column0, 1).execute(ModelExtension.class);
+        
+        assertEquals(1, models.size());
+        assertEquals(idValue1, models.get(0).get(column0));
+        assertEquals(ageValue1, models.get(0).get(column1));
+        assertEquals(idValue1, child.get(column0));
+        assertEquals(ageValue1, child.get(column1));
+        
+    }
+
+    @Test
+    public void testFindColumns_withOneValidColumn_andOneObjectInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            idValue + "', " +
+            ageValue + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findColumns(column0).execute(ModelExtension.class);
+
+        assertEquals(1, models.size());
+        assertEquals(idValue, models.get(0).get(column0));
+        assertEquals(idValue, child.get(column0));
+    }
+
+    @Test
+    public void testFindColumns_withTwoValidColumns_andOneObjectInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            idValue + "', " +
+            ageValue + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findColumns(column0, column1).execute(ModelExtension.class);
+
+        assertEquals(1, models.size());
+        assertEquals(idValue, models.get(0).get(column0));
+        assertEquals(ageValue, models.get(0).get(column1));
+        assertEquals(idValue, child.get(column0));
+        assertEquals(ageValue, child.get(column1));
+    }
+
+    @Test
+    public void testFindColumns_withTwoValidColumns_andMultipleObjectsInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 22;
+        int idValue1 = 1;
+        int ageValue1 = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findColumns(column0, column1).execute(ModelExtension.class);
+        
+        assertEquals(2, models.size());
+        assertEquals(idValue0, models.get(0).get(column0));
+        assertEquals(ageValue0, models.get(0).get(column1));
+        assertEquals(idValue1, models.get(1).get(column0));
+        assertEquals(ageValue1, models.get(1).get(column1));
+    }
+    
+    @Test
+    public void testFindColumns_withTwoValidColumns_andNoObjectsInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findColumns(column0, column1).execute(ModelExtension.class);
+        
+        assertEquals(0, models.size());
+    }
+
+    // TODO test where() and whereAnd() functions
+
+    // TODO test joinUsing() and joinOn() functions
+
+    @Test
+    public void testUpdate_withOneObjectInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            idValue + "', " +
+            ageValue + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        child.setColumn(column0, idValue).setColumn(column1, ageValue + 5).update(column0, ModelExtension.class);
+
+        try {
+            String sql = "SELECT * FROM ModelExtension";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery();
+            rs.next();
+            assertEquals(idValue, rs.getInt(column0));
+            assertEquals(ageValue + 5, rs.getInt(column1));
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+    }
+
+    @Test
+    public void testUpdate_withNoObjectInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        try {
+            child.setColumn(column0, idValue).setColumn(column1, ageValue).update(column0, ModelExtension.class);
+            assertTrue(false);
+        } catch (ResourcePersistenceException e) {
+            // Yay
+        }
+    }
+
+    @Test
+    public void testDelete_withOneObjectInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES ('" +
+            idValue + "', " +
+            ageValue + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child
+                                        .setColumn(column0, idValue)
+                                        .setColumn(column1, ageValue)
+                                        .delete()
+                                        .execute(ModelExtension.class);
+
+        try {
+            String sql = "SELECT * FROM ModelExtension";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery();
+            assertFalse(rs.next());
+            assertEquals(0, models.size());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+    }
+    @Test
+    public void testDelete_withNoObjectInTable() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue = 0;
+        int ageValue = 22;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+        List<ModelExtension> models = null;
+        try {
+            models = child
+                        .setColumn(column0, idValue)
+                        .setColumn(column1, ageValue)
+                        .delete()
+                        .execute(ModelExtension.class);
+            assertTrue(false);
+        } catch (ResourcePersistenceException e) {
+            // Yay
+        }
+        assertNull(models);
     }
 }

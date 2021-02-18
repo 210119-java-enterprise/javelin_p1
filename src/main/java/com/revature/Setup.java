@@ -53,7 +53,7 @@ public final class Setup {
         try {
             conn = DriverManager.getConnection(url, user, password);
         } catch (SQLException e) {
-            logger.error(e.getMessage());
+            logger.error(e.getStackTrace());
             conn = null;
             throw new SQLException(e);
         }
@@ -75,7 +75,7 @@ public final class Setup {
             conn.setSchema(schema);
         } catch (SQLException e) {
             conn = null;
-            logger.error(e.getMessage());
+            logger.error(e.getStackTrace());
             throw new SQLException(e);
         }
     }
@@ -97,6 +97,22 @@ public final class Setup {
         } catch (IOException e) {
             logger.error(e.getStackTrace());
             logger.error("File not found at path specified: " + location);
+        }
+    }
+
+    /**
+     * Allows user to change the schema for the database
+     * @param schemaName the name of the schema in which to work
+     * @throws SQLException - if a database access error occurs
+     */
+    public static void setSchema(String schemaName) throws SQLException {
+        try {
+            conn.setSchema(schemaName);
+        } catch (SQLException e) {
+            conn = null;
+            logger.error(e.getStackTrace());
+            throw new SQLException(e);
+
         }
     }
 

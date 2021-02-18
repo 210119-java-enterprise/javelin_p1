@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import com.revature.annotations.Table;
 import com.revature.exceptions.InvalidColumnsException;
@@ -137,6 +138,52 @@ public abstract class Model {
     }
 
     // -------------------------------------------
+    // POJO methods
+
+    @Override
+    public String toString() {
+        String res = "Table name: " + tableName;
+        Set<String> keyset = fieldsAndValues.keySet();
+        for (String key : keyset) {
+            res += "\n" + key + ": " + fieldsAndValues.get(key);
+        }
+        return res;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((fieldsAndValues == null) ? 0 : fieldsAndValues.hashCode());
+        result = prime * result + ((tableName == null) ? 0 : tableName.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Model other = (Model) obj;
+        if (fieldsAndValues == null) {
+            if (other.fieldsAndValues != null)
+                return false;
+        } else if (!fieldsAndValues.equals(other.fieldsAndValues))
+            return false;
+        if (tableName == null) {
+            if (other.tableName != null)
+                return false;
+        } else if (!tableName.equals(other.tableName))
+            return false;
+        return true;
+    }
+
+    
+
+    // -------------------------------------------
     // Getters and Setters
 
     public String getTableName() { return tableName; }
@@ -221,6 +268,11 @@ public abstract class Model {
         return (T) this;
     }
 
+    /**
+     * Checks user-given column names to make sure they are in a good format
+     * @param columnName
+     * @throws InvalidColumnsException
+     */
     private void sanitizeColumn(String columnName) throws InvalidColumnsException {
         if (!columnName.matches("[A-Za-z_]+")) {
             throw new InvalidColumnsException("Invalid name for a column, " +
@@ -241,8 +293,8 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T findAllByColumn(String columnName, Object value) {
-        sqlString = "SELECT * FROM " + tableName + " WHERE '?' = ? ";
-        userSqlList.add(columnName.toUpperCase());
+        sanitizeColumn(columnName);
+        sqlString = "SELECT * FROM " + tableName + " WHERE " + columnName + "=? ";
         userSqlList.add(value);
         return (T) this;
     }
@@ -260,12 +312,12 @@ public abstract class Model {
     public <T extends Model> T findColumns(String... columnList) {
         sqlString = "SELECT ";
         for (int i = 0; i < columnList.length; i++) {
+            sanitizeColumn(columnList[i]);
             if (i != columnList.length - 1) {
-                sqlString += "?, ";
+                sqlString += columnList[i] + ", ";
             } else {
-                sqlString += "? ";
+                sqlString += columnList[i] + " ";
             }
-            userSqlList.add(columnList[i]);
         }
         sqlString += "FROM " + tableName + " ";
         return (T) this;
@@ -283,8 +335,8 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T where(String query) {
-        sqlString += "WHERE ? ";
-        userSqlList.add(query);
+        sanitizeQuery(query);
+        sqlString += "WHERE " + query;
         return (T) this;
     }
 
@@ -300,9 +352,58 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T whereAnd(String query) {
-        sqlString += "AND ? ";
-        userSqlList.add(query);
+        sanitizeQuery(query);
+        sqlString += "AND " + query;
         return (T) this;
+    }
+
+    /**
+     * Adds a {@code JOIN...USING} clause to the SQL query. This is an
+     * intermediary operation. Use after a starting operation and before
+     * a terminal operation.
+     * @param <T> object inheriting from {@code Model}
+     * @param other Other object to join tables with
+     * @param columnName name of shared column to use in join
+     * @return {@code this} to allow for method chaining
+     */
+    @SuppressWarnings("unchecked") 
+    public <T extends Model> T joinUsing(T other, String columnName) {
+        sanitizeColumn(columnName);
+        sqlString += "JOIN " + other.getTableName() +
+            " USING (" + columnName + ") ";
+        return (T) this;
+    }
+
+    /**
+     * Adds a {@code JOIN...ON} clause to the SQL query. This is an
+     * intermediary operation. Use after a starting operation and before
+     * a terminal operation.
+     * @param <T> object inheriting from {@code Model}
+     * @param other Other object to join tables with
+     * @param thiscolumnName name of column in this table to use in join
+     * @param otherColumnName name of column in other table to use in join
+     * @return {@code this} to allow for method chaining
+     */
+    @SuppressWarnings("unchecked") 
+    public <T extends Model> T joinOn(T other, String thisColumnName, String otherColumnName) {
+        sanitizeColumn(thisColumnName);
+        sanitizeColumn(otherColumnName);
+        sqlString += "JOIN " + other.getTableName() +
+            " ON (" + tableName + "." + thisColumnName + 
+            " = " + other.getTableName() + "." + otherColumnName + ")";
+        return (T) this;
+    }
+
+    /**
+     * Checks user-given queries to make sure they are in a good format
+     * @param query
+     * @throws InvalidQueryException
+     */
+    private void sanitizeQuery(String query) throws InvalidQueryException {
+        if (!query.matches("[A-Za-z_\\s]+")) {
+            throw new InvalidQueryException("Invalid query, " +
+                "please ensure that your query only contains alphabetic characters, underscores and whitespace");
+        }
     }
 
     /**
@@ -310,13 +411,15 @@ public abstract class Model {
      * update a record with the same {@code id} value in the database corresponding
      * to this class. Will {@code throw InvalidColumnsException} if no fields are
      * set. This is a starting and terminal operation.
-     * @param <T> object inheriting from {@code Model}
+     * 
+     * @param <T>   object inheriting from {@code Model}
+     * @param primaryKeyColumn, the name of the primary key column in the table
      * @param clazz the {@code Class} of this object
      */
-    public <T extends Model> void update(Class<T> clazz) {
+    public <T extends Model> void update(String primaryKeyColumn, Class<T> clazz) {
         sqlString = "UPDATE " + tableName + " SET ";
         // for loop
-        String[] keySet = (String[]) fieldsAndValues.keySet().toArray();
+        String[] keySet = (String[]) fieldsAndValues.keySet().toArray(new String[0]);
         for (int i = 0; i < keySet.length; i++) {
             sqlString += keySet[i] + "=" + fieldsAndValues.get(keySet[i]);
             if (i != keySet.length - 1) {
@@ -327,18 +430,8 @@ public abstract class Model {
         }
         sqlString += "WHERE ";
         // find id column and value
-        String idKey = "";
-        for (String key : keySet) {
-            if (key.contains("id") || key.contains("ID") || key.contains("Id")) {
-                idKey = key;
-                break;
-            }
-        }
-        if (idKey.equals("")) {
-            throw new InvalidColumnsException(
-                    "Could not find an appropriate id key! Make sure to set your primary key and that it contains \"id\" in it");
-        }
-        sqlString += idKey + "=" + fieldsAndValues.get(idKey) + " ";
+        sanitizeColumn(primaryKeyColumn);
+        sqlString += primaryKeyColumn + "=" + fieldsAndValues.get(primaryKeyColumn.toUpperCase()) + " ";
         execute(clazz);
     }
 
@@ -426,7 +519,18 @@ public abstract class Model {
                 if (pstmt.executeUpdate() > 0) {
                     rs = pstmt.getGeneratedKeys();
                 } else {
-                    throw new ResourcePersistenceException("Update failed, please try again");
+                    if (sqlString.startsWith("INSERT")) {
+                        throw new ResourcePersistenceException("Insert function failed, please please make sure columns " +
+                        "and values are valid.");
+                    }
+                    else if (sqlString.startsWith("UPDATE")) {
+                        throw new ResourcePersistenceException("Update function failed, please please make sure that an object " +
+                        "with given primary key column and value exists in table to be updated.");
+                    }
+                    else if (sqlString.startsWith("DELETE")) {
+                        throw new ResourcePersistenceException("Delete function failed, please make sure that an object " +
+                                "with given columns and values exists in table to be deleted.");
+                    }
                 }
             }
         } catch (SQLException e) {
