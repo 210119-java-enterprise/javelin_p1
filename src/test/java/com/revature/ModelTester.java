@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Properties;
 
 import com.revature.exceptions.InvalidColumnsException;
+import com.revature.exceptions.InvalidQueryException;
 import com.revature.exceptions.ResourcePersistenceException;
 import com.revature.exceptions.TypeMismatchException;
 
@@ -654,8 +655,324 @@ public class ModelTester {
     }
 
     // TODO test where() and whereAnd() functions
+    @Test
+    public void testWhere_withValidQuery() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 23;
+        int idValue1 = 1;
+        int ageValue1 = 22;
+        int idValue2 = 2;
+        int ageValue2 = 18;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + "), (" +
+            idValue2 + ", " +
+            ageValue2 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAll().where(column1 + ">20").execute(ModelExtension.class);
+
+        assertEquals(2, models.size());
+        assertEquals(idValue0, models.get(0).get(column0));
+        assertEquals(ageValue0, models.get(0).get(column1));
+        assertEquals(idValue1, models.get(1).get(column0));
+        assertEquals(ageValue1, models.get(1).get(column1));
+    }
+
+    @Test
+    public void testWhere_withInvalidQuery() {
+        String column0 = "user_id";
+        String column1 = "age";
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        try {
+            List<ModelExtension> models = child.findAll().where("; DROP TABLE").execute(ModelExtension.class);
+            assertTrue(false);
+        } catch (InvalidQueryException e) {
+            // Yay
+        }
+    }
+
+    @Test
+    public void testWhereAnd_withNoExistingWhereClause_andValidQuery() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 23;
+        int idValue1 = 1;
+        int ageValue1 = 22;
+        int idValue2 = 2;
+        int ageValue2 = 18;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + "), (" +
+            idValue2 + ", " +
+            ageValue2 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAll().whereAnd(column1 + ">20").execute(ModelExtension.class);
+
+        assertEquals(2, models.size());
+        assertEquals(idValue0, models.get(0).get(column0));
+        assertEquals(ageValue0, models.get(0).get(column1));
+        assertEquals(idValue1, models.get(1).get(column0));
+        assertEquals(ageValue1, models.get(1).get(column1));
+    }
+
+    @Test
+    public void testWhereAnd_withExistingWhereClause_andInvalidQuery() {
+        String column0 = "user_id";
+        String column1 = "age";
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        try {
+            List<ModelExtension> models = child.findAll().where(column1 + ">20").whereAnd(";Drop table").execute(ModelExtension.class);
+            assertTrue(false);
+        } catch (InvalidQueryException e) {
+            // Yay
+        }
+
+    }
+
+    @Test
+    public void testWhereAnd_withExistingWhereClause_andValidQuery() {
+        String column0 = "user_id";
+        String column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 23;
+        int idValue1 = 1;
+        int ageValue1 = 22;
+        int idValue2 = 2;
+        int ageValue2 = 18;
+
+        try {
+            String sql = "CREATE TABLE ModelExtension (" +
+            column0 + " int, " +
+            column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            column0 + ", " +
+            column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + "), (" +
+            idValue2 + ", " +
+            ageValue2 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAll().where(column1 + ">20").whereAnd(column0 + "<1").execute(ModelExtension.class);
+
+        assertEquals(1, models.size());
+        assertEquals(idValue0, models.get(0).get(column0));
+        assertEquals(ageValue0, models.get(0).get(column1));
+    }
 
     // TODO test joinUsing() and joinOn() functions
+    @Test
+    public void testJoinOn_withTwoValidTables() {
+        String table1column0 = "user_id";
+        String table1column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 23;
+        int idValue1 = 1;
+        int ageValue1 = 22;
+        int idValue2 = 2;
+        int ageValue2 = 18;
+        String table2column0 = "pet_id";
+        String table2column1 = "owner_id";
+        int pet1_id = 0;
+        int pet2_id = 1;
+
+        try {
+            // Set up ModelExtension Table
+            String sql = "CREATE TABLE ModelExtension (" +
+            table1column0 + " int, " +
+            table1column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            table1column0 + ", " +
+            table1column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + "), (" +
+            idValue2 + ", " +
+            ageValue2 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+            // Set up Test Table
+            sql = "CREATE TABLE Test (" +
+            table2column0 + " int, " +
+            table2column1 + " int)";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO Test (" +
+            table2column0 + ", " +
+            table2column1 + ") VALUES (" +
+            pet1_id + ", " +
+            idValue0 + "), (" +
+            pet2_id + ", " +
+            idValue1 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        List<ModelExtension> models = child.findAll()
+                                        .joinOn(
+                                            new ModelExtensionWithAnnotation(), 
+                                            table1column0, 
+                                            table2column1)
+                                        .execute(ModelExtension.class);
+
+        assertEquals(2, models.size());
+        assertEquals(idValue0, models.get(0).get(table1column0));
+        assertEquals(ageValue0, models.get(0).get(table1column1));
+        assertEquals(pet1_id, models.get(0).get(table2column0));
+        assertEquals(idValue0, models.get(0).get(table2column1));
+
+        assertEquals(idValue1, models.get(1).get(table1column0));
+        assertEquals(ageValue1, models.get(1).get(table1column1));
+        assertEquals(pet2_id, models.get(1).get(table2column0));
+        assertEquals(idValue1, models.get(1).get(table2column1));
+    }
+
+    @Test
+    public void testJoinUsing_withTwoValidTables_andSharedColumnName() {
+        String table1column0 = "person_id";
+        String table1column1 = "age";
+        int idValue0 = 0;
+        int ageValue0 = 23;
+        int idValue1 = 1;
+        int ageValue1 = 22;
+        int idValue2 = 2;
+        int ageValue2 = 18;
+        String table2column0 = "pet_id";
+        String table2column1 = "person_id";
+        int pet1_id = 0;
+        int pet2_id = 1;
+
+        try {
+            // Set up ModelExtension Table
+            String sql = "CREATE TABLE ModelExtension (" +
+            table1column0 + " int, " +
+            table1column1 + " int)";
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO ModelExtension (" +
+            table1column0 + ", " +
+            table1column1 + ") VALUES (" +
+            idValue0 + ", " +
+            ageValue0 + "), (" +
+            idValue1 + ", " +
+            ageValue1 + "), (" +
+            idValue2 + ", " +
+            ageValue2 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+            // Set up Test Table
+            sql = "CREATE TABLE Test (" +
+            table2column0 + " int, " +
+            table2column1 + " int)";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.execute();
+            sql = "INSERT INTO Test (" +
+            table2column0 + ", " +
+            table2column1 + ") VALUES (" +
+            pet1_id + ", " +
+            idValue0 + "), (" +
+            pet2_id + ", " +
+            idValue1 + ")";
+            pstmt = Setup.getConnection().prepareStatement(sql);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        // TODO: throwing a sql error? sql statement looks right
+        List<ModelExtension> models = child.findAll()
+                                        .joinUsing(
+                                            new ModelExtensionWithAnnotation(), 
+                                            table1column0)
+                                        .execute(ModelExtension.class);
+
+        assertEquals(2, models.size());
+        System.out.println(models.get(0));
+        assertEquals(idValue0, models.get(0).get(table1column0));
+        assertEquals(ageValue0, models.get(0).get(table1column1));
+        assertEquals(pet1_id, models.get(0).get(table2column0));
+        assertEquals(idValue0, models.get(0).get(table2column1));
+
+        assertEquals(idValue1, models.get(1).get(table1column0));
+        assertEquals(ageValue1, models.get(1).get(table1column1));
+        assertEquals(pet2_id, models.get(1).get(table2column0));
+        assertEquals(idValue1, models.get(1).get(table2column1));
+    }
 
     @Test
     public void testUpdate_withOneObjectInTable() {

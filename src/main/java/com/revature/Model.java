@@ -226,7 +226,7 @@ public abstract class Model {
             if (i != keySet.length - 1) {
                 sqlString += "?, ";
             } else {
-                sqlString += "?)";
+                sqlString += "?) ";
             }
             userSqlList.add(fieldsAndValues.get(keySet[i]));
         }
@@ -244,7 +244,7 @@ public abstract class Model {
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T findAll() {
-        sqlString = "SELECT * FROM " + tableName;
+        sqlString = "SELECT * FROM " + tableName + " ";
         return (T) this;
     }
 
@@ -262,7 +262,7 @@ public abstract class Model {
     @SuppressWarnings("unchecked") 
     public <T extends Model> T findAllById(String idColumnName, int id) {
         sanitizeColumn(idColumnName);
-        sqlString = "SELECT * FROM " + tableName + " WHERE " + idColumnName + "=?";
+        sqlString = "SELECT * FROM " + tableName + " WHERE " + idColumnName + "=? ";
         userSqlList.add(id);
 
         return (T) this;
@@ -274,7 +274,7 @@ public abstract class Model {
      * @throws InvalidColumnsException
      */
     private void sanitizeColumn(String columnName) throws InvalidColumnsException {
-        if (!columnName.matches("[A-Za-z_]+")) {
+        if (!columnName.matches("([A-Za-z_][A-Za-z_0-9$]*)|\".*\"")) {
             throw new InvalidColumnsException("Invalid name for a column, " +
                 "please ensure that your column only contains alphabetic characters and underscores");
         }
@@ -336,14 +336,15 @@ public abstract class Model {
     @SuppressWarnings("unchecked") 
     public <T extends Model> T where(String query) {
         sanitizeQuery(query);
-        sqlString += "WHERE " + query;
+        sqlString += "WHERE " + query + " ";
         return (T) this;
     }
 
     /**
-     * Continues a {@code WHERE} clause onto the SQL query. Use this to add onto a
-     * {@code WHERE} clause - like after using {@code findAllById()} or
-     * {@code where()}. This is an intermediary operation. Use after a starting
+     * Continues or starts a {@code WHERE} clause onto the SQL query.
+     * If no {@code WHERE} clause has been started, starts one. Otherwise
+     * continues a {@code WHERE} clause by adding {@code AND} to the SQL query.
+     * This is an intermediary operation. Use after a starting
      * operation and before a terminal operation.
      * 
      * @param <T> object inheriting from {@code Model}
@@ -353,7 +354,11 @@ public abstract class Model {
     @SuppressWarnings("unchecked") 
     public <T extends Model> T whereAnd(String query) {
         sanitizeQuery(query);
-        sqlString += "AND " + query;
+        if (sqlString.contains("WHERE")) {
+            sqlString += "AND " + query + " ";
+        } else {
+            sqlString += "WHERE " + query + " ";
+        }
         return (T) this;
     }
 
@@ -367,10 +372,11 @@ public abstract class Model {
      * @return {@code this} to allow for method chaining
      */
     @SuppressWarnings("unchecked") 
-    public <T extends Model> T joinUsing(T other, String columnName) {
+    public <T extends Model, U extends Model> T joinUsing(U other, String columnName) {
         sanitizeColumn(columnName);
         sqlString += "JOIN " + other.getTableName() +
             " USING (" + columnName + ") ";
+        System.out.println(sqlString);
         return (T) this;
     }
 
@@ -385,22 +391,23 @@ public abstract class Model {
      * @return {@code this} to allow for method chaining
      */
     @SuppressWarnings("unchecked") 
-    public <T extends Model> T joinOn(T other, String thisColumnName, String otherColumnName) {
+    public <T extends Model, U extends Model> T joinOn(U other, String thisColumnName, String otherColumnName) {
         sanitizeColumn(thisColumnName);
         sanitizeColumn(otherColumnName);
         sqlString += "JOIN " + other.getTableName() +
             " ON (" + tableName + "." + thisColumnName + 
-            " = " + other.getTableName() + "." + otherColumnName + ")";
+            " = " + other.getTableName() + "." + otherColumnName + ") ";
         return (T) this;
     }
 
     /**
-     * Checks user-given queries to make sure they are in a good format
+     * Checks user-given queries to make sure they are in a good format.
+     * Only does basic checking to make sure there aren't semicolons
      * @param query
      * @throws InvalidQueryException
      */
     private void sanitizeQuery(String query) throws InvalidQueryException {
-        if (!query.matches("[A-Za-z_\\s]+")) {
+        if (!query.matches("[^;]+")) {
             throw new InvalidQueryException("Invalid query, " +
                 "please ensure that your query only contains alphabetic characters, underscores and whitespace");
         }
@@ -502,10 +509,9 @@ public abstract class Model {
                         " could not be found, please create table and try again.");
                 }
             }
-            // sqlString = "SELECT * FROM ModelExtension WHERE ?=?";
+            // sqlString = "SELECT * FROM ModelExtension JOIN Test USING (person_id)";
+            // userSqlList = new ArrayList<>();
             PreparedStatement pstmt = Setup.getConnection().prepareStatement(sqlString);
-            // pstmt.setString(1, "user_id");
-            // pstmt.setObject(2, 0);
             for (int i = 0; i < userSqlList.size(); i++) {
                 pstmt.setObject(i + 1, userSqlList.get(i));
             }
