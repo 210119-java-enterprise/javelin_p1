@@ -7,16 +7,17 @@ as a part of training with Revature.
 Created by Nate Gamble
 
 <br>
+
 How to use
 ===
 - Include the dependency in your project
 
 ```
-    <dependency>
-      <groupId>com.revature</groupId>
-      <artifactId>javelin_p1</artifactId>
-      <version>1.0-SNAPSHOT</version>
-    </dependency>
+<dependency>
+    <groupId>com.revature</groupId>
+    <artifactId>javelin_p1</artifactId>
+    <version>1.0-SNAPSHOT</version>
+</dependency>
 ```
 
 - Create a class for each pojo or table in database that you want to use. This class should extend `com.revature.javelin.Model`
