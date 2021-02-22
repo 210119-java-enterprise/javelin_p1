@@ -1,4 +1,4 @@
-package com.revature;
+package com.revature.javelin;
 
 import static org.junit.Assert.*;
 
@@ -11,10 +11,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 
-import com.revature.exceptions.InvalidColumnsException;
-import com.revature.exceptions.InvalidQueryException;
-import com.revature.exceptions.ResourcePersistenceException;
-import com.revature.exceptions.TypeMismatchException;
+import com.revature.javelin.exceptions.InvalidColumnsException;
+import com.revature.javelin.exceptions.InvalidQueryException;
+import com.revature.javelin.exceptions.ResourcePersistenceException;
+import com.revature.javelin.exceptions.TypeMismatchException;
 
 import org.junit.*;
 
@@ -906,6 +906,7 @@ public class ModelTester {
 
     @Ignore
     @Test
+    // join using doesn't work with h2 database?
     public void testJoinUsing_withTwoValidTables_andSharedColumnName() {
         String table1column0 = "person_id";
         String table1column1 = "age";
@@ -955,7 +956,6 @@ public class ModelTester {
             pstmt.executeUpdate();
 
 
-            // TODO: Doesn't work?
             sql = "SELECT ModelExtension.age FROM ModelExtension JOIN Test ON (ModelExtension.person_id = Test.person_id)";
             pstmt = Setup.getConnection().prepareStatement(sql);
             ResultSet rs = pstmt.executeQuery();
@@ -967,23 +967,23 @@ public class ModelTester {
         }
 
         // TODO: throwing a sql error? sql statement looks right
-        // List<ModelExtension> models = child.findAll()
-        //                                 .joinUsing(
-        //                                     new ModelExtensionWithAnnotation(), 
-        //                                     table1column0)
-        //                                 .execute(ModelExtension.class);
+        List<ModelExtension> models = child.findAll()
+                                        .joinUsing(
+                                            new ModelExtensionWithAnnotation(), 
+                                            table1column0)
+                                        .execute(ModelExtension.class);
 
-        // assertEquals(2, models.size());
-        // System.out.println(models.get(0));
-        // assertEquals(idValue0, models.get(0).get(table1column0));
-        // assertEquals(ageValue0, models.get(0).get(table1column1));
-        // assertEquals(pet1_id, models.get(0).get(table2column0));
-        // assertEquals(idValue0, models.get(0).get(table2column1));
+        assertEquals(2, models.size());
+        System.out.println(models.get(0));
+        assertEquals(idValue0, models.get(0).get(table1column0));
+        assertEquals(ageValue0, models.get(0).get(table1column1));
+        assertEquals(pet1_id, models.get(0).get(table2column0));
+        assertEquals(idValue0, models.get(0).get(table2column1));
 
-        // assertEquals(idValue1, models.get(1).get(table1column0));
-        // assertEquals(ageValue1, models.get(1).get(table1column1));
-        // assertEquals(pet2_id, models.get(1).get(table2column0));
-        // assertEquals(idValue1, models.get(1).get(table2column1));
+        assertEquals(idValue1, models.get(1).get(table1column0));
+        assertEquals(ageValue1, models.get(1).get(table1column1));
+        assertEquals(pet2_id, models.get(1).get(table2column0));
+        assertEquals(idValue1, models.get(1).get(table2column1));
     }
 
     @Test

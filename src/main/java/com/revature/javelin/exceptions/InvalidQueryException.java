@@ -1,4 +1,4 @@
-package com.revature.exceptions;
+package com.revature.javelin.exceptions;
 
 public class InvalidQueryException extends RuntimeException {
 
