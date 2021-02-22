@@ -1,4 +1,4 @@
-package com.revature.annotations;
+package com.revature.javelin.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

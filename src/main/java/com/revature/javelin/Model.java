@@ -1,4 +1,4 @@
-package com.revature;
+package com.revature.javelin;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -11,11 +11,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
-import com.revature.annotations.Table;
-import com.revature.exceptions.InvalidColumnsException;
-import com.revature.exceptions.InvalidQueryException;
-import com.revature.exceptions.ResourcePersistenceException;
-import com.revature.exceptions.TypeMismatchException;
+import com.revature.javelin.annotations.Table;
+import com.revature.javelin.exceptions.InvalidColumnsException;
+import com.revature.javelin.exceptions.InvalidQueryException;
+import com.revature.javelin.exceptions.ResourcePersistenceException;
+import com.revature.javelin.exceptions.TypeMismatchException;
+
+import static com.revature.javelin.AppState.logger;
 
 // TODO: add logging
 public abstract class Model {
@@ -99,6 +101,8 @@ public abstract class Model {
      *      value attributed to column
      * @return
      *      {@code this} to encourage method chaining
+     * @throws TypeMismatchException when the type of given value and value previously
+     *      in object are of different types
      */
     @SuppressWarnings("unchecked") 
     public <T extends Model> T setColumn(String column, Object value) {
@@ -121,7 +125,7 @@ public abstract class Model {
 
     /**
      * Adds given {@code column} and {@code value} to {@code this}.
-     * Will override previous value if {@code column} already
+     * Will override previous value  and type if {@code column} already
      * exists. Does not interact with database.
      * @param <T>
      * @param column
@@ -207,6 +211,7 @@ public abstract class Model {
      * @param clazz the {@code Class} of this object
      */
     public <T extends Model> void create(Class<T> clazz) {
+        logger.info("Creating object in table " + tableName);
         if (fieldsAndValues.isEmpty()) {
             throw new InvalidColumnsException("No columns are set");
         }
@@ -230,6 +235,7 @@ public abstract class Model {
             }
             userSqlList.add(fieldsAndValues.get(keySet[i]));
         }
+        logger.info("SQL String: " + sqlString);
         execute(clazz);
 
     }
@@ -238,15 +244,18 @@ public abstract class Model {
      * Adds all {@code fields} and {@code values} in object to {@code sqlString} and
      * executes it. This will create a new record in the database corresponding to
      * this class with the already given values. Will {@code throw} an
-     * {@code InvalidColumnsException} if no fields are set. This is a starting and
-     * terminal operation.
+     * {@code InvalidColumnsException} if no fields are set. Will add the
+     * primary key column and value to {@code this} after object creation.
+     * Assumes primary key is a serial
+     * This is a starting and terminal operation.
      * @param <T> object inheriting from {@code Model}
      * @param clazz the {@code Class} of this object
-     * @param primaryKeyColumnName
+     * @param primaryKeyColumnName the name of the primary key column
      */
     public <T extends Model> void create(Class<T> clazz, String primaryKeyColumnName) {
         create(clazz);
         sanitizeColumn(primaryKeyColumnName);
+        logger.info("Retrieving max value from " + primaryKeyColumnName + " to add into object");
         sqlString = "SELECT MAX(" + primaryKeyColumnName + ") FROM " + tableName;
         try {
             PreparedStatement pstmt = Setup.getConnection().prepareStatement(sqlString);
@@ -255,7 +264,7 @@ public abstract class Model {
             Object primaryKeyValue = rs.getObject(1);
             fieldsAndValues.put(primaryKeyColumnName.toUpperCase(), primaryKeyValue);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e.getStackTrace());
         }
 
 
@@ -272,6 +281,7 @@ public abstract class Model {
     @SuppressWarnings("unchecked") 
     public <T extends Model> T findAll() {
         sqlString = "SELECT * FROM " + tableName + " ";
+        logger.info("Starting sql query: " + sqlString);
         return (T) this;
     }
 
@@ -291,7 +301,7 @@ public abstract class Model {
         sanitizeColumn(idColumnName);
         sqlString = "SELECT * FROM " + tableName + " WHERE " + idColumnName + "=? ";
         userSqlList.add(id);
-
+        logger.info("Starting sql query: " + sqlString);
         return (T) this;
     }
 
@@ -301,7 +311,9 @@ public abstract class Model {
      * @throws InvalidColumnsException
      */
     private void sanitizeColumn(String columnName) throws InvalidColumnsException {
+        logger.info("Running basic sanitation on column name: " + columnName);
         if (!columnName.matches("([A-Za-z_][A-Za-z_0-9$]*)|\".*\"")) {
+            logger.warn("Column not accepted");
             throw new InvalidColumnsException("Invalid name for a column, " +
                 "please ensure that your column only contains alphabetic characters and underscores");
         }
@@ -323,6 +335,7 @@ public abstract class Model {
         sanitizeColumn(columnName);
         sqlString = "SELECT * FROM " + tableName + " WHERE " + columnName + "=? ";
         userSqlList.add(value);
+        logger.info("Starting sql query: " + sqlString);
         return (T) this;
     }
 
@@ -347,6 +360,7 @@ public abstract class Model {
             }
         }
         sqlString += "FROM " + tableName + " ";
+        logger.info("Starting sql query: " + sqlString);
         return (T) this;
     }
 
@@ -364,6 +378,7 @@ public abstract class Model {
     public <T extends Model> T where(String query) {
         sanitizeQuery(query);
         sqlString += "WHERE " + query + " ";
+        logger.info("Starting where clause: " + sqlString);
         return (T) this;
     }
 
@@ -386,6 +401,7 @@ public abstract class Model {
         } else {
             sqlString += "WHERE " + query + " ";
         }
+        logger.info("Continuing where clause: " + sqlString);
         return (T) this;
     }
 
@@ -401,12 +417,9 @@ public abstract class Model {
     @SuppressWarnings("unchecked") 
     public <T extends Model, U extends Model> T joinUsing(U other, String columnName) {
         sanitizeColumn(columnName);
-        // System.out.println("Old sql string: " + sqlString);
-        // String[] temp = sqlString.split(tableName);
-        // sqlString = temp[0] + tableName + ", " + other.getTableName() + temp[1];
         sqlString += "JOIN " + other.getTableName() +
-            " USING (" + columnName.toUpperCase() + ") ";   
-            // System.out.println("New sql string: " + sqlString);
+            " USING (" + columnName.toUpperCase() + ") ";
+        logger.info("Adding join using clause: " + sqlString);
         return (T) this;
     }
 
@@ -429,6 +442,7 @@ public abstract class Model {
         sqlString += "JOIN " + other.getTableName() +
             " ON (" + tableName + "." + thisColumnName.toUpperCase() + 
             " = " + other.getTableName() + "." + otherColumnName.toUpperCase() + ") ";
+        logger.info("Adding join on clause: " + sqlString);
         return (T) this;
     }
 
@@ -451,6 +465,7 @@ public abstract class Model {
         sqlString += "JOIN " + otherTable1.getTableName() +
             " ON (" + otherTable2.getTableName() + "." + table1ColumnName.toUpperCase() + 
             " = " + otherTable1.getTableName() + "." + table2ColumnName.toUpperCase() + ") ";
+        logger.info("Adding join on clause: " + sqlString);
         return (T) this;
     }
 
@@ -461,7 +476,9 @@ public abstract class Model {
      * @throws InvalidQueryException
      */
     private void sanitizeQuery(String query) throws InvalidQueryException {
+        logger.info("Running basic sanitation on query: " + query);
         if (!query.matches("[^;]+")) {
+            logger.warn("Query not accepted");
             throw new InvalidQueryException("Invalid query, " +
                 "please ensure that your query only contains alphabetic characters, underscores and whitespace");
         }
@@ -495,6 +512,7 @@ public abstract class Model {
         sanitizeColumn(primaryKeyColumn);
         sqlString += primaryKeyColumn + "=? ";
         userSqlList.add(fieldsAndValues.get(primaryKeyColumn.toUpperCase()));
+        logger.info("Updating object: " + this.toString());
         execute(clazz);
     }
 
@@ -510,6 +528,7 @@ public abstract class Model {
     @SuppressWarnings("unchecked") 
     public <T extends Model> T delete() {
         sqlString = "DELETE FROM " + tableName + " ";
+        logger.info("Starting delete statement");
         return (T) this;
     }
 

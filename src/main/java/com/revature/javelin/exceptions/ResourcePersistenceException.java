@@ -1,4 +1,4 @@
-package com.revature.exceptions;
+package com.revature.javelin.exceptions;
 
 /**
  * ResourcePersistenceExceptions are used when data is being
