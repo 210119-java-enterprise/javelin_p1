@@ -646,8 +646,7 @@ public abstract class Model {
                 }
             } catch (InstantiationException | IllegalAccessException | IllegalArgumentException
                     | InvocationTargetException | SQLException | NoSuchMethodException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                logger.error(e.getStackTrace());
             }
             if (newModelList.size() == 1) {
                 fieldsAndValues = newModelList.get(0).getFieldsAndValues();

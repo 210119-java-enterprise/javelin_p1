@@ -1,8 +1,15 @@
 javelin_p1
 ===
-This ORM is to be used with PostgreSQL. It provides an abstraction for JDBC using
-class extension, similar to ActiveJDBC, jOOQ, and JavaLite. This project was created
-as a part of training with Revature.
+Javelin is a basic ORM framework that provides an abstraction for JDBC using
+class extension, similar to ActiveJDBC, jOOQ, and JavaLite. This ORM provides functionality
+for CRUD methods (CREATE, SELECT, UPDATE, DELETE) and has basic implementations
+of join and where clauses. Javelin currently only works with PostgreSQL databases.
+
+This project should not be considered a substitute for an enterprise-level ORM,
+as this ORM does not provide full protection from SQL injection and other methods
+of attack on a database.
+
+This project was created as a part of training with Revature.
 
 Created by Nate Gamble
 
