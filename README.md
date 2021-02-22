@@ -11,13 +11,14 @@ How to use
 ===
 - Include the dependency in your project
 
-    `
+```
     <dependency>
       <groupId>com.revature</groupId>
       <artifactId>javelin_p1</artifactId>
       <version>1.0-SNAPSHOT</version>
     </dependency>
-    `
+```
+
 - Create a class for each pojo or table in database that you want to use. This class should extend `com.revature.javelin.Model`
     - This class should be empty apart from an optional `@Table` annotation before the class declaration providing the name of the table for the class.
 - Create an instance of your class and call methods on it to perform CRUD operations on your database.
