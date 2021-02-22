@@ -29,9 +29,9 @@ How to use
 ```
 
 - Create a class for each pojo or table in database that you want to use. This class should extend `com.revature.javelin.Model`
-    - This class should be empty apart from an optional `@Table` annotation before the class declaration providing the name of the table for the class.
+    - This class should be empty apart from an optional `@Table` annotation before the class declaration providing the name of the table for the class (e.g. `@Table("app_users")` ).
 - Create an instance of your class and call methods on it to perform CRUD operations on your database.
-- CRUD methods (listed below) are either starting, intermediary and/or terminal. A starting needs to be the first method called when executing a SQL call to the database. Intermediary operations are optional and must come between starting operations and terminal operations. Terminal operations must come at the end of a call. Terminal operations will enact the built SQL call upon the database.
+- CRUD methods (listed below) are either Starting, Intermediary and/or Terminal. A Starting operation needs to be the first method called when executing a SQL call to the database. Intermediary operations are optional and must come between Starting operations and Terminal operations. Terminal operations must come at the end of a call. Terminal operations will enact the built SQL call upon the database.
 
 | Name of method    | Type of operation  |
 |-------------------|--------------------|
