@@ -51,4 +51,4 @@ buildNumber.properties
 # End of https://www.toptal.com/developers/gitignore/api/vscode,maven,java
 
 *.properties
-logs.txt
+src/main/resources/logs
