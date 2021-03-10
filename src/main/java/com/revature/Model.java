@@ -235,6 +235,33 @@ public abstract class Model {
     }
 
     /**
+     * Adds all {@code fields} and {@code values} in object to {@code sqlString} and
+     * executes it. This will create a new record in the database corresponding to
+     * this class with the already given values. Will {@code throw} an
+     * {@code InvalidColumnsException} if no fields are set. This is a starting and
+     * terminal operation.
+     * @param <T> object inheriting from {@code Model}
+     * @param clazz the {@code Class} of this object
+     * @param primaryKeyColumnName
+     */
+    public <T extends Model> void create(Class<T> clazz, String primaryKeyColumnName) {
+        create(clazz);
+        sanitizeColumn(primaryKeyColumnName);
+        sqlString = "SELECT MAX(" + primaryKeyColumnName + ") FROM " + tableName;
+        try {
+            PreparedStatement pstmt = Setup.getConnection().prepareStatement(sqlString);
+            ResultSet rs = pstmt.executeQuery();
+            rs.next();
+            Object primaryKeyValue = rs.getObject(1);
+            fieldsAndValues.put(primaryKeyColumnName.toUpperCase(), primaryKeyValue);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    /**
      * Adds query to find all objects in associated table to be executed later. This
      * is an starting operation, use {@code execute()} to finish the query and get
      * desired results or chain intermediary operations onto this.
@@ -374,9 +401,12 @@ public abstract class Model {
     @SuppressWarnings("unchecked") 
     public <T extends Model, U extends Model> T joinUsing(U other, String columnName) {
         sanitizeColumn(columnName);
+        // System.out.println("Old sql string: " + sqlString);
+        // String[] temp = sqlString.split(tableName);
+        // sqlString = temp[0] + tableName + ", " + other.getTableName() + temp[1];
         sqlString += "JOIN " + other.getTableName() +
-            " USING (" + columnName + ") ";
-        System.out.println(sqlString);
+            " USING (" + columnName.toUpperCase() + ") ";   
+            // System.out.println("New sql string: " + sqlString);
         return (T) this;
     }
 
@@ -391,12 +421,36 @@ public abstract class Model {
      * @return {@code this} to allow for method chaining
      */
     @SuppressWarnings("unchecked") 
-    public <T extends Model, U extends Model> T joinOn(U other, String thisColumnName, String otherColumnName) {
+    public <T extends Model, U extends Model> T joinOn(U other, String otherColumnName, String thisColumnName) {
         sanitizeColumn(thisColumnName);
         sanitizeColumn(otherColumnName);
+        // String[] temp = sqlString.split(tableName);
+        // sqlString = temp[0] + tableName + ", " + other.getTableName() + temp[1];
         sqlString += "JOIN " + other.getTableName() +
-            " ON (" + tableName + "." + thisColumnName + 
-            " = " + other.getTableName() + "." + otherColumnName + ") ";
+            " ON (" + tableName + "." + thisColumnName.toUpperCase() + 
+            " = " + other.getTableName() + "." + otherColumnName.toUpperCase() + ") ";
+        return (T) this;
+    }
+
+    /**
+     * Adds a {@code JOIN...ON} clause to the SQL query. This is an
+     * intermediary operation. Use after a starting operation and before
+     * a terminal operation.
+     * @param <T> object inheriting from {@code Model}
+     * @param other Other object to join tables with
+     * @param thiscolumnName name of column in this table to use in join
+     * @param otherColumnName name of column in other table to use in join
+     * @return {@code this} to allow for method chaining
+     */
+    @SuppressWarnings("unchecked") 
+    public <T extends Model, U extends Model, V extends Model> T joinOn(U otherTable1, String table1ColumnName, V otherTable2, String table2ColumnName) {
+        sanitizeColumn(table1ColumnName);
+        sanitizeColumn(table2ColumnName);
+        // String[] temp = sqlString.split(tableName);
+        // sqlString = temp[0] + tableName + ", " + other.getTableName() + temp[1];
+        sqlString += "JOIN " + otherTable1.getTableName() +
+            " ON (" + otherTable2.getTableName() + "." + table1ColumnName.toUpperCase() + 
+            " = " + otherTable1.getTableName() + "." + table2ColumnName.toUpperCase() + ") ";
         return (T) this;
     }
 
@@ -428,7 +482,8 @@ public abstract class Model {
         // for loop
         String[] keySet = (String[]) fieldsAndValues.keySet().toArray(new String[0]);
         for (int i = 0; i < keySet.length; i++) {
-            sqlString += keySet[i] + "=" + fieldsAndValues.get(keySet[i]);
+            sqlString += keySet[i] + "=?" ;
+            userSqlList.add(fieldsAndValues.get(keySet[i]));
             if (i != keySet.length - 1) {
                 sqlString += ", ";
             } else {
@@ -438,7 +493,8 @@ public abstract class Model {
         sqlString += "WHERE ";
         // find id column and value
         sanitizeColumn(primaryKeyColumn);
-        sqlString += primaryKeyColumn + "=" + fieldsAndValues.get(primaryKeyColumn.toUpperCase()) + " ";
+        sqlString += primaryKeyColumn + "=? ";
+        userSqlList.add(fieldsAndValues.get(primaryKeyColumn.toUpperCase()));
         execute(clazz);
     }
 
@@ -522,6 +578,7 @@ public abstract class Model {
                 pstmt.execute();
                 rs = pstmt.getResultSet();
             } else {
+                // System.out.println(sqlString);
                 if (pstmt.executeUpdate() > 0) {
                     rs = pstmt.getGeneratedKeys();
                 } else {
@@ -556,7 +613,7 @@ public abstract class Model {
                     for (int i = 0; i < rsmd.getColumnCount(); i++) {
                         String columnName = rsmd.getColumnName(i+1);
                         Object value = rs.getObject(columnName);
-                        fieldMap.put(columnName, value);
+                        fieldMap.put(columnName.toUpperCase(), value);
                     }
 
                     // Get constructor for T and create a new object of that class
